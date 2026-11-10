@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linearität & Zeitinvarianz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,500;1,400&display=swap">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1c2230; --muted: #5d6678; --line: #d9dde5; --grid: #eceff4;
+  --x: #2459c7; --g: #d0641a; --p: #7a3fb8; --y: #13805c; --bad: #c0392b; --ok: #13805c;
+  --hl: #fff3c4; --win: rgba(36, 89, 199, 0.08);
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-math: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151c; --panel: #1a1e27; --fg: #e4e7ee; --muted: #9aa3b5; --line: #2e3441; --grid: #232834;
+    --x: #7ea6ff; --g: #f39a55; --p: #c39af0; --y: #4fd1a0; --bad: #ff7b6b; --ok: #4fd1a0;
+    --hl: #3b3620; --win: rgba(126, 166, 255, 0.12); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151c; --panel: #1a1e27; --fg: #e4e7ee; --muted: #9aa3b5; --line: #2e3441; --grid: #232834;
+  --x: #7ea6ff; --g: #f39a55; --p: #c39af0; --y: #4fd1a0; --bad: #ff7b6b; --ok: #4fd1a0;
+  --hl: #3b3620; --win: rgba(126, 166, 255, 0.12); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.crumb { font-size: 0.82rem; color: var(--muted); }
+.crumb a { color: var(--x); text-decoration: none; } .crumb a:hover { text-decoration: underline; }
+header h1 { font-size: 1.6rem; font-weight: 600; margin: 2px 0 4px; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+h2 .tag { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 8px; }
+.m { font-family: var(--font-math); font-style: italic; white-space: nowrap; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; min-width: 64px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+button {
+  font: inherit; font-size: 0.9rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg); }
+button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--x); outline-offset: 2px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); cursor: pointer; font-size: 0.9rem; }
+.chk input { accent-color: var(--x); margin: 0; }
+.chk.on { border-color: var(--muted); }
+.slider { display: flex; align-items: center; gap: 8px; flex: 1 1 240px; min-width: 0; }
+.slider input[type=range] { flex: 1; min-width: 80px; accent-color: var(--g); }
+.val { font-family: var(--font-mono); font-size: 0.95rem; min-width: 76px; }
+.formula { font-family: var(--font-math); font-size: 1.08rem; overflow-x: auto; white-space: nowrap; padding-bottom: 2px; }
+.note { font-size: 0.88rem; color: var(--muted); margin: 0; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); border-top: 0 dashed var(--c); }
+.legend span.dash::before { background: none; border-top: 2px dashed var(--c); height: 0; }
+.plotbox { min-width: 0; }
+svg { display: block; width: 100%; }
+svg text { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 9px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; font-family: var(--font-math); font-style: italic; color: var(--muted); }
+td.cur, th.cur { background: var(--hl); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="crumb"><a href="../../index.html">MEB Interaktiv</a> › Signale &amp; Systeme · Kap. 6</div>
+    <h1>Linearität &amp; Zeitinvarianz testen</h1>
+    <p>The six systems from Aufgabe 1 of the Kap. 6 Übungsklausur. Pick one, then run the two tests from Folie 144–145: scale the input (λ-test) and delay it (shift test). The test input is a short pulse.</p>
+  </header>
+
+  <section class="panel">
+    <div class="row"><span class="label">System</span><div class="seg" id="sys" role="group" aria-label="System"></div></div>
+    <div class="formula" id="eq"></div>
+    <div class="row" id="verdicts"></div>
+  </section>
+
+  <section class="panel">
+    <h2><span class="tag">Test 1</span>Linearität: λ-Test</h2>
+    <p class="note">Scale the input by λ. A linear system gives exactly λ times the old output, so the two curves lie on top of each other.</p>
+    <div class="row">
+      <div class="slider"><span class="m">λ</span><input type="range" id="lam" min="-2" max="3" step="0.25" value="2" aria-label="lambda"><span class="val" id="lamv"></span></div>
+      <span id="linv"></span>
+    </div>
+    <div class="legend"><span style="--c:var(--x)">response to λ·x</span><span class="dash" style="--c:var(--g)">λ · (response to x)</span></div>
+    <div class="plotbox" id="pL"></div>
+  </section>
+
+  <section class="panel">
+    <h2><span class="tag">Test 2</span>Zeitinvarianz: Verschiebe-Test</h2>
+    <p class="note">Delay the input by a. A time-invariant system gives the same output, just delayed by a ("heute genauso wie morgen").</p>
+    <div class="row">
+      <div class="slider"><span class="m">a</span><input type="range" id="sh" min="0" max="3" step="0.25" value="1.5" aria-label="shift a"><span class="val" id="shv"></span></div>
+      <span id="tiv"></span>
+    </div>
+    <div class="legend"><span style="--c:var(--x)">response to the delayed input</span><span class="dash" style="--c:var(--g)">old response, delayed by a</span></div>
+    <div class="plotbox" id="pT"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Equation test (what you write in the exam)</h2>
+    <div id="why"></div>
+  </section>
+
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const col = (c) => (c && c.startsWith("--") ? css(c) : c);
+const fmt = (v, d = 4) => {
+  if (!isFinite(v)) return "–";
+  if (Math.abs(v) < 1e-10) return "0";
+  const r = Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
+  return (r < 0 ? "−" : "") + String(Math.abs(r));
+};
+const num = (v) => (v < 0 ? "−" + -v : String(v));
+const sig = (t) => (t >= 0 ? 1 : 0);
+function niceStep(span, target) {
+  const raw = span / (target || 4); const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+}
+// sample f on [a,b]; insert a break (null) at jumps
+function sample(f, a, b, dt, jump) {
+  const pts = []; let prev = null;
+  for (let t = a; t <= b + 1e-9; t += dt) {
+    const v = f(t);
+    if (prev !== null && Math.abs(v - prev) > (jump || 0.25)) pts.push(null);
+    pts.push([t, v]); prev = v;
+  }
+  return pts;
+}
+/* plot(el, {x:[a,b], y:[lo,hi]|null, h, series:[{kind:'line'|'stem'|'area'|'band', pts, color, w, dash, op}],
+             vlines:[{x,color,label}], dots:[{x,y,color,label}], xlabel, ylabel, xint}) */
+function plot(el, o) {
+  const W = Math.max(280, el.clientWidth || 600), H = o.h || 200;
+  const ml = 44, mr = 12, mt = 16, mb = 26;
+  let lo, hi;
+  if (o.y) { [lo, hi] = o.y; } else {
+    lo = 0; hi = 0;
+    o.series.forEach((s) => { if (s.kind === "band") return; s.pts.forEach((p) => { if (p) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); } }); });
+    (o.dots || []).forEach((d) => { lo = Math.min(lo, d.y); hi = Math.max(hi, d.y); });
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.12; if (lo < 0) lo -= pad; if (hi > 0) hi += pad;
+  }
+  const [a, b] = o.x;
+  const sx = (t) => ml + ((t - a) / (b - a)) * (W - ml - mr);
+  const sy = (v) => mt + ((hi - Math.max(lo, Math.min(hi, v))) / (hi - lo)) * (H - mt - mb);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${o.aria || ""}">`;
+  // bands (windows) first
+  o.series.filter((q) => q.kind === "band").forEach((q) => {
+    q.pts.forEach(([u, v]) => { s += `<rect x="${sx(u)}" y="${mt}" width="${Math.max(0, sx(v) - sx(u))}" height="${H - mt - mb}" fill="${col(q.color || "--win")}"/>`; });
+  });
+  const ys = niceStep(hi - lo, Math.max(3, Math.floor((H - mt - mb) / 36)));
+  for (let v = Math.ceil(lo / ys) * ys; v <= hi + 1e-9; v += ys) {
+    s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v)}" y2="${sy(v)}" stroke="${css("--grid")}"/>`;
+    s += `<text x="${ml - 6}" y="${sy(v) + 4}" text-anchor="end">${fmt(v, 3)}</text>`;
+  }
+  const xs = o.xint ? Math.max(1, Math.ceil(niceStep(b - a, Math.floor((W - ml - mr) / 34)))) : niceStep(b - a, Math.floor((W - ml - mr) / 44));
+  for (let t = Math.ceil(a / xs) * xs; t <= b + 1e-9; t += xs) {
+    if (Math.abs(t) < 1e-9) continue;
+    s += `<line x1="${sx(t)}" x2="${sx(t)}" y1="${mt}" y2="${H - mb}" stroke="${css("--grid")}"/>`;
+    s += `<text x="${sx(t)}" y="${H - 8}" text-anchor="middle">${fmt(t, 3)}</text>`;
+  }
+  if (a < 0 && b > 0) s += `<line x1="${sx(0)}" x2="${sx(0)}" y1="${mt}" y2="${H - mb}" stroke="${css("--muted")}" stroke-width="1"/>`;
+  if (lo <= 0 && hi >= 0) s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(0)}" y2="${sy(0)}" stroke="${css("--muted")}" stroke-width="1"/>`;
+  if (o.xlabel) s += `<text x="${W - mr}" y="${sy(Math.max(lo, Math.min(hi, 0))) - 5}" text-anchor="end" style="font-style:italic">${o.xlabel}</text>`;
+  (o.vlines || []).forEach((v) => {
+    const c = col(v.color || "--muted");
+    s += `<line x1="${sx(v.x)}" x2="${sx(v.x)}" y1="${mt - 6}" y2="${H - mb}" stroke="${c}" stroke-dasharray="4 3" stroke-width="1.3"/>`;
+    if (v.label) s += `<text x="${sx(v.x) + 4}" y="${mt + 2}" style="fill:${c}">${v.label}</text>`;
+  });
+  o.series.forEach((q) => {
+    const c = col(q.color), op = q.op ?? 1;
+    if (q.kind === "line" || q.kind === "area") {
+      let d = "", pen = false, seg = [];
+      const segs = [];
+      q.pts.forEach((p) => { if (!p) { if (seg.length) segs.push(seg); seg = []; } else seg.push(p); });
+      if (seg.length) segs.push(seg);
+      segs.forEach((sg) => {
+        if (q.kind === "area") {
+          let pd = `M${sx(sg[0][0])},${sy(0)} ` + sg.map((p) => `L${sx(p[0])},${sy(p[1])}`).join(" ") + ` L${sx(sg[sg.length - 1][0])},${sy(0)} Z`;
+          s += `<path d="${pd}" fill="${c}" fill-opacity="${q.fop ?? 0.22}" stroke="none"/>`;
+        } else {
+          d = sg.map((p, i) => `${i ? "L" : "M"}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(" ");
+          s += `<path d="${d}" fill="none" stroke="${c}" stroke-width="${q.w || 2}" stroke-dasharray="${q.dash || ""}" opacity="${op}" stroke-linejoin="round"/>`;
+        }
+      });
+    } else if (q.kind === "stem") {
+      q.pts.forEach((p) => {
+        if (!p) return; const [n, v] = p; const pop = p[2] ?? op;
+        if (Math.abs(v) > 1e-12) s += `<line x1="${sx(n)}" x2="${sx(n)}" y1="${sy(0)}" y2="${sy(v)}" stroke="${c}" stroke-width="${q.w || 1.8}" opacity="${pop}"/>`;
+        s += `<circle cx="${sx(n)}" cy="${sy(v)}" r="${q.r || 4}" fill="${q.fill ? c : css("--panel")}" stroke="${c}" stroke-width="1.6" opacity="${pop}"/>`;
+        if (q.labels && Math.abs(v) > 1e-12) s += `<text x="${sx(n)}" y="${v >= 0 ? sy(v) - 8 : sy(v) + 16}" text-anchor="middle" style="fill:${c}" opacity="${pop}">${fmt(v, 3)}</text>`;
+      });
+    }
+  });
+  (o.dots || []).forEach((d) => {
+    const c = col(d.color);
+    s += `<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="5" fill="${c}"/>`;
+    if (d.label) s += `<text x="${sx(d.x) + 8}" y="${sy(d.y) - 8}" style="fill:${c};font-weight:500">${d.label}</text>`;
+  });
+  s += "</svg>"; el.innerHTML = s;
+}
+function onRedraw(fn) {
+  let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(fn, 60); }).observe(document.querySelector(".wrap"));
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fn); } catch (e) {}
+  new MutationObserver(fn).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+function pressGroup(container, key) { [...container.children].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.key === key))); }
+
+
+// ---------- systems from Aufgabe 1 ----------
+const DT_N = 16;
+const xDT = (n) => ({ 0: 1, 1: 2, 2: -1, 3: 0.5 }[n] || 0);              // test input x[n]
+const bump = (t) => (t >= 0.5 && t <= 2.5 ? Math.pow(Math.sin(Math.PI * (t - 0.5) / 2), 2) : 0);  // test input x(t)
+
+function simDT(step, x) {        // step(n, x, y) -> y[n]; system starts at rest
+  const y = [];
+  const Y = (k) => (k >= 0 ? y[k] : 0);
+  for (let n = 0; n < DT_N; n++) y.push(step(n, x, Y));
+  return y;
+}
+function rk4(f, x, T, dt, dim) { // f(t, z, x) -> dz ; returns [t, z]
+  let z = new Array(dim).fill(0); const out = [[0, z.slice()]];
+  for (let t = 0; t < T - 1e-9; t += dt) {
+    const k1 = f(t, z, x), z2 = z.map((v, i) => v + dt / 2 * k1[i]);
+    const k2 = f(t + dt / 2, z2, x), z3 = z.map((v, i) => v + dt / 2 * k2[i]);
+    const k3 = f(t + dt / 2, z3, x), z4 = z.map((v, i) => v + dt * k3[i]);
+    const k4 = f(t + dt, z4, x);
+    z = z.map((v, i) => v + dt / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+    out.push([t + dt, z.slice()]);
+  }
+  return out;
+}
+const DT = 0.01;
+const SYS = {
+  A: { dt: true, eq: "y[n] = x[n] · y[n−1]", lin: false, ti: true,
+       run: (x) => simDT((n, x, Y) => x(n) * Y(n - 1), x),
+       why: `Substitute x → λx and y → λy: <span class="m">λy[n] = λx[n] · λy[n−1] = λ²·x[n]y[n−1]</span>. λ does not cancel, so the system is <b>nicht linear</b> (product of two signals). <span class="m">n</span> does not appear on its own, so it is <b>zeitinvariant</b>.<br><br><b>Why the plots show only zeros:</b> starting from rest, <span class="m">y[−1] = 0</span>, so every later value is 0 too, whatever the input. The simulation can't reveal the nonlinearity here; the equation test can. That's why the exam asks for the equation argument.` },
+  B: { dt: true, eq: "y[n] = 0.5·y[n−1] + n·x[n]", lin: true, ti: false,
+       run: (x) => simDT((n, x, Y) => 0.5 * Y(n - 1) + n * x(n), x),
+       why: `λ factors out of every term: <span class="m">λy[n] = 0.5·λy[n−1] + n·λx[n]</span> → <b>linear</b>. The coefficient <span class="m">n</span> appears explicitly, so a delayed input meets a different factor → <b>nicht zeitinvariant</b>.` },
+  C: { dt: true, eq: "Y/X = R / (1 − 0.5R²)   ⇔   y[n] = x[n−1] + 0.5·y[n−2]", lin: true, ti: true,
+       run: (x) => simDT((n, x, Y) => x(n - 1) + 0.5 * Y(n - 2), x),
+       why: `Operator form ⇒ LTI. Written out, <span class="m">y[n] = x[n−1] + 0.5y[n−2]</span>: constant coefficients, no products, no explicit <span class="m">n</span> → <b>linear</b> and <b>zeitinvariant</b>.` },
+  D: { dt: false, eq: "y(t) = x(t − 2) + 1", lin: false, ti: true, T: 8, rest: 1,
+       run: (x) => { const o = []; for (let t = 0; t <= 8 + 1e-9; t += DT) o.push([t, x(t - 2) + 1]); return o; },
+       why: `<span class="m">λ·(x(t−2) + 1) = λx(t−2) + λ ≠ λx(t−2) + 1</span> → <b>nicht linear</b>. The constant offset is the culprit: with <span class="m">x = 0</span> a linear system must give <span class="m">y = 0</span>, here it gives 1. The delay <span class="m">x(t−2)</span> is only a shifted signal, not an explicit <span class="m">t</span> → <b>zeitinvariant</b>.` },
+  E: { dt: false, eq: "ẏ(t) = sin(t) · y(t) + x(t)", lin: true, ti: false, T: 8,
+       run: (x) => rk4((t, z, x) => [Math.sin(t) * z[0] + x(t)], x, 8, DT, 1).map(([t, z]) => [t, z[0]]),
+       why: `λ factors out: <span class="m">λẏ = sin(t)·λy + λx</span> → <b>linear</b>. The coefficient <span class="m">sin(t)</span> depends explicitly on <span class="m">t</span>, so a delayed input sees a different gain → <b>nicht zeitinvariant</b>.` },
+  F: { dt: false, eq: "2ÿ(t) − 5y(t) = ẋ(t) − 3x(t)", lin: true, ti: true, T: 4.5,
+       // G(s) = (s − 3)/(2s² − 5): z1' = z2, z2' = 2.5 z1 + x, y = −1.5 z1 + 0.5 z2
+       run: (x) => rk4((t, z, x) => [z[1], 2.5 * z[0] + x(t)], x, 4.5, DT, 2).map(([t, z]) => [t, -1.5 * z[0] + 0.5 * z[1]]),
+       why: `Constant coefficients, every term contains exactly one signal → <b>linear</b> and <b>zeitinvariant</b> (LTI). It is unstable (poles <span class="m">s = ±√2.5</span>), which is why the output grows, but stability has nothing to do with being LTI.` },
+};
+
+let key = "B";
+const sysEl = $("sys");
+Object.keys(SYS).forEach((k) => {
+  const b = document.createElement("button"); b.textContent = k; b.dataset.key = k; b.setAttribute("aria-pressed", "false");
+  b.title = SYS[k].eq; b.addEventListener("click", () => { key = k; render(); }); sysEl.appendChild(b);
+});
+
+function pill(ok, yes, no) { return `<span class="pill ${ok ? "ok" : "bad"}">${ok ? yes : no}</span>`; }
+function maxdiff(a, b) { let m = 0, s = 1; a.forEach((v, i) => { m = Math.max(m, Math.abs(v - b[i])); s = Math.max(s, Math.abs(v), Math.abs(b[i])); }); return m / s; }
+
+function render() {
+  const S = SYS[key]; pressGroup(sysEl, key);
+  $("eq").textContent = S.eq;
+  const lam = parseFloat($("lam").value); $("lamv").textContent = "λ = " + fmt(lam);
+  let a = parseFloat($("sh").value);
+  if (S.dt) { $("sh").step = 1; $("sh").max = 5; a = Math.round(a); $("sh").value = a; } else { $("sh").step = 0.25; $("sh").max = 3; }
+  $("shv").textContent = "a = " + fmt(a);
+
+  if (S.dt) {
+    const y = S.run(xDT), yl = S.run((n) => lam * xDT(n)), ly = y.map((v) => lam * v);
+    const ys = S.run((n) => xDT(n - a)), yd = y.map((_, n) => (n - a >= 0 ? y[n - a] : 0));
+    const linOK = maxdiff(yl, ly) < 1e-9, tiOK = maxdiff(ys, yd) < 1e-9;
+    $("linv").innerHTML = pill(linOK, "curves identical → passes", "curves differ → nicht linear");
+    $("tiv").innerHTML = pill(tiOK, "curves identical → passes", "curves differ → nicht zeitinvariant");
+    const st = (arr, c, extra) => ({ kind: "stem", pts: arr.map((v, n) => [n, v]), color: c, ...extra });
+    plot($("pL"), { x: [-0.8, DT_N - 0.2], xint: true, h: 210, xlabel: "n", series: [st(yl, "--x", { r: 5 }), st(ly, "--g", { r: 3, fill: true, w: 0 })] });
+    plot($("pT"), { x: [-0.8, DT_N - 0.2], xint: true, h: 210, xlabel: "n", series: [st(ys, "--x", { r: 5 }), st(yd, "--g", { r: 3, fill: true, w: 0 })] });
+  } else {
+    const y = S.run(bump), yl = S.run((t) => lam * bump(t)), ly = y.map(([t, v]) => [t, lam * v]);
+    const ys = S.run((t) => bump(t - a));
+    const rest = S.rest || 0;
+    const yd = y.map(([t]) => { const k = Math.round((t - a) / DT); return [t, k >= 0 ? y[k][1] : rest]; });
+    const linOK = maxdiff(yl.map((p) => p[1]), ly.map((p) => p[1])) < 1e-6;
+    const tiOK = maxdiff(ys.map((p) => p[1]), yd.map((p) => p[1])) < 1e-4;
+    $("linv").innerHTML = pill(linOK, "curves identical → passes", "curves differ → nicht linear");
+    $("tiv").innerHTML = pill(tiOK, "curves identical → passes", "curves differ → nicht zeitinvariant");
+    const T = S.T;
+    plot($("pL"), { x: [0, T], h: 210, xlabel: "t", series: [
+      { kind: "line", pts: yl, color: "--x", w: 3 }, { kind: "line", pts: ly, color: "--g", w: 2, dash: "6 4" }] });
+    plot($("pT"), { x: [0, T], h: 210, xlabel: "t", series: [
+      { kind: "line", pts: ys, color: "--x", w: 3 }, { kind: "line", pts: yd, color: "--g", w: 2, dash: "6 4" }] });
+  }
+  $("verdicts").innerHTML = `Answer key: ${pill(S.lin, "linear", "nicht linear")} ${pill(S.ti, "zeitinvariant", "nicht zeitinvariant")}`;
+  $("why").innerHTML = `<p style="margin:0">${S.why}</p>`;
+}
+["lam", "sh"].forEach((id) => $(id).addEventListener("input", render));
+onRedraw(render);
+render();
+
+</script>
+</body>
+</html>

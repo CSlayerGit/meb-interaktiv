@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DT-Faltung Schritt für Schritt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,500;1,400&display=swap">
+<style>
+/* Layout: one lab-bench column — controls, four aligned stem plots on a shared i-axis, then the row method table. */
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --fg: #1c2230;
+  --muted: #5d6678;
+  --line: #d9dde5;
+  --grid: #eceff4;
+  --x: #2459c7;      /* input x[i] */
+  --g: #d0641a;      /* impulse response g[n-i] */
+  --p: #7a3fb8;      /* products */
+  --y: #13805c;      /* output y[n] */
+  --hl: #fff3c4;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-math: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151c; --panel: #1a1e27; --fg: #e4e7ee; --muted: #9aa3b5; --line: #2e3441; --grid: #232834;
+    --x: #7ea6ff; --g: #f39a55; --p: #c39af0; --y: #4fd1a0; --hl: #3b3620; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151c; --panel: #1a1e27; --fg: #e4e7ee; --muted: #9aa3b5; --line: #2e3441; --grid: #232834;
+  --x: #7ea6ff; --g: #f39a55; --p: #c39af0; --y: #4fd1a0; --hl: #3b3620; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header h1 { font-size: 1.6rem; font-weight: 600; margin: 0 0 4px; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 68ch; }
+.m { font-family: var(--font-math); font-style: italic; white-space: nowrap; }
+.m b { font-style: normal; font-weight: 500; }
+.def { font-family: var(--font-math); font-size: 1.05rem; padding: 10px 14px; border-left: 3px solid var(--line); color: var(--fg); overflow-x: auto; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.controls { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; min-width: 64px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+button {
+  font: inherit; font-size: 0.9rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--x); outline-offset: 2px; }
+.nctl { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; }
+input[type=range] { flex: 1; min-width: 80px; accent-color: var(--g); }
+.nval { font-family: var(--font-mono); font-size: 1rem; min-width: 64px; }
+.custom { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px 10px; align-items: center; }
+.custom input[type=text] { font-family: var(--font-mono); font-size: 0.9rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); min-width: 0; width: 100%; }
+.custom input[type=number] { width: 64px; font-family: var(--font-mono); padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.custom .small { font-size: 0.8rem; color: var(--muted); }
+.err { color: #c0392b; font-size: 0.85rem; min-height: 1.2em; }
+.note { font-size: 0.85rem; color: var(--muted); }
+
+.result { display: flex; flex-direction: column; gap: 6px; }
+.result .big { font-family: var(--font-math); font-size: 1.15rem; overflow-x: auto; white-space: nowrap; padding-bottom: 2px; }
+.result .why { color: var(--muted); font-size: 0.92rem; }
+
+.plots { display: flex; flex-direction: column; gap: 4px; padding: 10px 8px; }
+.plot { position: relative; }
+.plot .cap { display: flex; justify-content: space-between; gap: 8px; padding: 0 8px; font-size: 0.85rem; }
+.plot .cap .m { font-size: 0.95rem; }
+.plot .cap .hint { color: var(--muted); font-size: 0.8rem; text-align: right; }
+svg { display: block; width: 100%; }
+svg text { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 9px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; font-family: var(--font-math); font-style: italic; color: var(--muted); }
+thead th { color: var(--muted); font-weight: 500; cursor: pointer; }
+td.cur, th.cur { background: var(--hl); }
+td.zero { color: var(--muted); opacity: 0.55; }
+tr.sum td { font-weight: 600; color: var(--y); border-top: 2px solid var(--fg); border-bottom: none; }
+tr.sum td:first-child { color: var(--y); }
+h2 { font-size: 1.05rem; margin: 0 0 6px; font-weight: 600; }
+.steps { margin: 0; padding-left: 1.2em; color: var(--fg); }
+.steps li { margin-bottom: 4px; }
+@media (max-width: 560px) {
+  .custom { grid-template-columns: auto 1fr; }
+  .custom .startwrap { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="crumb" style="font-size:.82rem;color:var(--muted)"><a href="../../index.html" style="color:var(--x);text-decoration:none">MEB Interaktiv</a> › Signale &amp; Systeme · Kap. 6</div>
+    <h1>DT-Faltung Schritt für Schritt</h1>
+    <p>Pick a value of <span class="m">n</span>, then see how <span class="m">y[n]</span> comes from the overlap of <span class="m">x[i]</span> with the flipped and shifted impulse response <span class="m">g[n−i]</span>. Signale &amp; Systeme, Kap. 6, Folie 151–152.</p>
+  </header>
+
+  <div class="def">y[n] = (x ∗ g)[n] = Σ<sub>i</sub> x[i] · g[n − i]</div>
+
+  <section class="panel controls" aria-label="Controls">
+    <div class="row">
+      <span class="label">Example</span>
+      <div class="seg" id="presets" role="group" aria-label="Example"></div>
+    </div>
+    <div class="custom" id="customBox" hidden>
+      <span class="m">x[n] =</span><input type="text" id="cx" value="1, 2, 3" aria-label="x values">
+      <span class="startwrap small">starts at n = <input type="number" id="cxs" value="0" step="1" aria-label="x start index"></span><span></span>
+      <span class="m">g[n] =</span><input type="text" id="cg" value="1, -2, 1" aria-label="g values">
+      <span class="startwrap small">starts at n = <input type="number" id="cgs" value="0" step="1" aria-label="g start index"></span><span></span>
+    </div>
+    <div class="err" id="err" role="alert"></div>
+    <div class="row">
+      <span class="label">Output n</span>
+      <div class="nctl">
+        <button id="prev" aria-label="Previous n">◀</button>
+        <input type="range" id="nslider" min="0" max="4" value="2" aria-label="n">
+        <button id="next" aria-label="Next n">▶</button>
+        <span class="nval" id="nval">n = 2</span>
+      </div>
+      <button id="play">Play</button>
+    </div>
+    <div class="note" id="presetNote"></div>
+  </section>
+
+  <section class="panel result" aria-live="polite">
+    <div class="big" id="formula"></div>
+    <div class="why" id="why"></div>
+  </section>
+
+  <section class="panel plots" id="plots">
+    <div class="plot"><div class="cap"><span class="m" style="color:var(--x)">x[i]</span><span class="hint">input, stays fixed</span></div><div id="pX"></div></div>
+    <div class="plot"><div class="cap"><span class="m" style="color:var(--g)">g[n − i]</span><span class="hint" id="gHint">g mirrored at i = 0, then moved right by n</span></div><div id="pG"></div></div>
+    <div class="plot"><div class="cap"><span class="m" style="color:var(--p)">x[i] · g[n − i]</span><span class="hint">multiply column by column, then add</span></div><div id="pP"></div></div>
+    <div class="plot"><div class="cap"><span class="m" style="color:var(--y)">y[n]</span><span class="hint">sum of the products, one value per n</span></div><div id="pY"></div></div>
+  </section>
+
+  <section class="panel">
+    <h2>Same result with the row method (Folie 152)</h2>
+    <p class="note" style="margin:0 0 8px">Each input sample <span class="m">x[k]</span> sends out its own copy <span class="m">x[k]·g[n−k]</span>: <span class="m">g</span> scaled by <span class="m">x[k]</span> and delayed by <span class="m">k</span>. Adding each column gives <span class="m">y[n]</span>. Click a column to jump there.</p>
+    <div class="tablewrap"><table id="rows"></table></div>
+  </section>
+
+  <section class="panel">
+    <h2>How to do it by hand</h2>
+    <ol class="steps">
+      <li>Flip <span class="m">g</span>: <span class="m">g[−i]</span> is <span class="m">g</span> mirrored at <span class="m">i = 0</span>.</li>
+      <li>Shift by <span class="m">n</span>: in <span class="m">g[n−i]</span>, the sample <span class="m">g[0]</span> now sits at <span class="m">i = n</span>.</li>
+      <li>Multiply the values that lie on top of each other, <span class="m">x[i]·g[n−i]</span>, and add them up.</li>
+      <li>Check: in every product, the two indices add up to <span class="m">n</span>, e.g. <span class="m">y[3] = x[0]g[3] + x[1]g[2] + x[2]g[1] + x[3]g[0]</span>.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(() => {
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const fmt = (v) => {
+    if (Math.abs(v) < 1e-12) return "0";
+    const r = Math.round(v * 10000) / 10000;
+    return (r < 0 ? "−" : "") + String(Math.abs(r));
+  };
+  const par = (v) => (v < 0 ? "(" + fmt(v) + ")" : fmt(v));
+
+  const N = 10;
+  const PRESETS = {
+    a4a: { name: "Aufgabe 4a", x: [1, 3, -2], xs: 0, g: [2, -1, 1], gs: 0, n0: 2,
+      note: "Mock exam Kap. 6, Aufgabe 4a. Answer: y[n] = [2, 5, −6, 5, −2]." },
+    a4b: { name: "Aufgabe 4b", x: Array.from({ length: N }, (_, k) => (k % 2 ? 2 : 1)), xs: 0,
+      g: Array.from({ length: N }, (_, k) => 6 * Math.pow(0.5, k)), gs: 0, n0: 3, truncated: true,
+      note: "Mock exam Kap. 6, Aufgabe 4b: g[n] = 6·0.5ⁿ·σ[n], x alternates 1, 2, … Both go on forever; shown for n = 0…9, which is exact for y[0…9]. Answer: y[3] = 18.75." },
+    f152: { name: "Folie 152", x: [1, 2, 3], xs: 0, g: [1, -2, 1], gs: 0, n0: 2,
+      note: "Übung 1 from the lecture (Folie 152). Answer: y[n] = [1, 0, 0, −4, 3]." },
+    shift: { name: "Shifted input", x: [2, 3], xs: 0, g: [2, 1], gs: 0, n0: 1,
+      note: "Folie 149–150: x[n] = 2δ[n] + 3δ[n−1] gives y[n] = 2g[n] + 3g[n−1]." },
+    custom: { name: "Your own", custom: true, n0: 0, note: "Enter comma-separated values. Each list may have up to 12 values." }
+  };
+
+  let S = null;   // current signal set
+  let n = 0;
+  let presetKey = "a4a";
+  let timer = null;
+
+  const $ = (id) => document.getElementById(id);
+  const presetsEl = $("presets");
+  Object.entries(PRESETS).forEach(([k, p]) => {
+    const b = document.createElement("button");
+    b.textContent = p.name; b.dataset.key = k; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => selectPreset(k));
+    presetsEl.appendChild(b);
+  });
+
+  function build(x, xs, g, gs, truncated) {
+    const xe = xs + x.length - 1, ge = gs + g.length - 1;
+    const X = (i) => (i >= xs && i <= xe ? x[i - xs] : 0);
+    const G = (k) => (k >= gs && k <= ge ? g[k - gs] : 0);
+    const nMin = xs + gs;
+    const nMax = truncated ? Math.min(xe + gs, xs + ge) : xe + ge;
+    const Y = (m) => { let s = 0; for (let i = xs; i <= xe; i++) s += X(i) * G(m - i); return s; };
+    const L = Math.min(xs, nMin - ge) - 1;
+    const R = Math.max(xe, nMax - gs) + 1;
+    const sMin = truncated ? nMin : nMin - 1, sMax = truncated ? nMax : nMax + 1;
+    // fixed y-limits per plot across all n
+    let pmin = 0, pmax = 0, ymin = 0, ymax = 0;
+    for (let m = sMin; m <= sMax; m++) {
+      for (let i = xs; i <= xe; i++) { const p = X(i) * G(m - i); pmin = Math.min(pmin, p); pmax = Math.max(pmax, p); }
+      const yv = Y(m); ymin = Math.min(ymin, yv); ymax = Math.max(ymax, yv);
+    }
+    return { x, xs, xe, g, gs, ge, X, G, Y, nMin, nMax, sMin, sMax, L, R, truncated,
+      lim: {
+        x: [Math.min(0, ...x), Math.max(0, ...x)],
+        g: [Math.min(0, ...g), Math.max(0, ...g)],
+        p: [pmin, pmax], y: [ymin, ymax]
+      } };
+  }
+
+  function parseList(str) {
+    const parts = str.split(/[,;\s]+/).filter((s) => s.length);
+    if (!parts.length) throw new Error("Enter at least one value.");
+    if (parts.length > 12) throw new Error("Use at most 12 values per signal.");
+    return parts.map((s) => {
+      const v = Number(s.replace("−", "-"));
+      if (!Number.isFinite(v)) throw new Error("“" + s + "” is not a number. Separate values with commas.");
+      return v;
+    });
+  }
+
+  function selectPreset(k) {
+    presetKey = k; stop();
+    const p = PRESETS[k];
+    [...presetsEl.children].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.key === k)));
+    $("customBox").hidden = !p.custom;
+    $("presetNote").textContent = p.note;
+    if (p.custom) { applyCustom(true); return; }
+    $("err").textContent = "";
+    S = build(p.x, p.xs, p.g, p.gs, p.truncated);
+    setupSlider(p.n0);
+  }
+
+  function applyCustom(resetN) {
+    try {
+      const x = parseList($("cx").value), g = parseList($("cg").value);
+      const xs = parseInt($("cxs").value, 10) || 0, gs = parseInt($("cgs").value, 10) || 0;
+      if (Math.abs(xs) > 20 || Math.abs(gs) > 20) throw new Error("Keep the start index between −20 and 20.");
+      $("err").textContent = "";
+      S = build(x, xs, g, gs, false);
+      setupSlider(resetN ? S.nMin : n);
+    } catch (e) { $("err").textContent = e.message; }
+  }
+  ["cx", "cg", "cxs", "cgs"].forEach((id) => $(id).addEventListener("input", () => applyCustom(false)));
+
+  function setupSlider(n0) {
+    const sl = $("nslider");
+    sl.min = S.sMin; sl.max = S.sMax;
+    setN(Math.max(S.sMin, Math.min(S.sMax, n0)));
+  }
+  function setN(v) { n = v; $("nslider").value = v; render(); }
+  $("nslider").addEventListener("input", (e) => { stop(); setN(parseInt(e.target.value, 10)); });
+  $("prev").addEventListener("click", () => { stop(); if (n > S.sMin) setN(n - 1); });
+  $("next").addEventListener("click", () => { stop(); if (n < S.sMax) setN(n + 1); });
+  $("play").addEventListener("click", () => {
+    if (timer) { stop(); return; }
+    $("play").textContent = "Pause";
+    if (n >= S.sMax) setN(S.sMin);
+    timer = setInterval(() => { if (n >= S.sMax) stop(); else setN(n + 1); }, 1200);
+  });
+  function stop() { if (timer) clearInterval(timer); timer = null; $("play").textContent = "Play"; }
+
+  // ---------- plotting ----------
+  function niceStep(span) {
+    const raw = span / 4; const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+  function stemPlot(el, pts, lim, opts = {}) {
+    const W = Math.max(280, el.clientWidth || 600), H = opts.h || 132;
+    const ml = 42, mr = 10, mt = 20, mb = 22;
+    let [lo, hi] = lim; if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.12; lo = Math.min(0, lo - (lo < 0 ? pad : 0)); hi = Math.max(0, hi + (hi > 0 ? pad : 0));
+    const sx = (i) => ml + ((i - S.L) / (S.R - S.L)) * (W - ml - mr);
+    const sy = (v) => mt + ((hi - v) / (hi - lo)) * (H - mt - mb);
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${opts.aria || ""}">`;
+    const step = niceStep(hi - lo);
+    for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) {
+      const y = sy(t);
+      s += `<line x1="${ml}" x2="${W - mr}" y1="${y}" y2="${y}" stroke="${css("--grid")}" stroke-width="1"/>`;
+      s += `<text x="${ml - 6}" y="${y + 4}" text-anchor="end">${fmt(t)}</text>`;
+    }
+    const span = S.R - S.L, every = span > 24 ? 2 : 1;
+    for (let i = Math.ceil(S.L); i <= S.R; i++) {
+      if ((i % every) !== 0) continue;
+      s += `<text x="${sx(i)}" y="${H - 6}" text-anchor="middle">${i < 0 ? "−" + (-i) : i}</text>`;
+    }
+    if (opts.marker != null) {
+      const x = sx(opts.marker);
+      s += `<line x1="${x}" x2="${x}" y1="${mt - 4}" y2="${H - mb}" stroke="${css("--g")}" stroke-dasharray="3 3" stroke-width="1.2"/>`;
+      s += `<text x="${x + 5}" y="${H - mb - 5}" style="fill:${css("--g")}">i = n</text>`;
+    }
+    s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(0)}" y2="${sy(0)}" stroke="${css("--muted")}" stroke-width="1"/>`;
+    pts.forEach((p) => {
+      const x = sx(p.i), y0 = sy(0), y = sy(p.v), col = p.color, op = p.op ?? 1;
+      if (Math.abs(p.v) > 1e-12) s += `<line x1="${x}" x2="${x}" y1="${y0}" y2="${y}" stroke="${col}" stroke-width="${p.bold ? 2.6 : 1.8}" opacity="${op}"/>`;
+      const r = p.bold ? 5.5 : 4;
+      s += `<circle cx="${x}" cy="${y}" r="${r}" fill="${p.fill ? col : css("--panel")}" stroke="${col}" stroke-width="1.6" opacity="${op}"/>`;
+      if (p.label != null) s += `<text x="${x}" y="${p.v >= 0 ? y - 9 : y + 17}" text-anchor="middle" style="fill:${col};font-weight:500">${p.label}</text>`;
+    });
+    s += `</svg>`;
+    el.innerHTML = s;
+  }
+
+  function render() {
+    if (!S) return;
+    $("nval").textContent = "n = " + (n < 0 ? "−" + -n : n);
+    const cx = css("--x"), cg = css("--g"), cp = css("--p"), cy = css("--y");
+    const overlap = new Set();
+    for (let i = S.L; i <= S.R; i++) if (Math.abs(S.X(i)) > 1e-12 && Math.abs(S.G(n - i)) > 1e-12) overlap.add(i);
+
+    const ptsX = [], ptsG = [], ptsP = [], ptsY = [];
+    for (let i = Math.ceil(S.L); i <= S.R; i++) {
+      const xv = S.X(i), gv = S.G(n - i), pv = xv * gv;
+      const on = overlap.has(i);
+      ptsX.push({ i, v: xv, color: cx, op: on ? 1 : 0.4, bold: on, label: on ? fmt(xv) : null });
+      ptsG.push({ i, v: gv, color: cg, op: on ? 1 : (Math.abs(gv) > 1e-12 ? 0.55 : 0.4), bold: on, label: on ? fmt(gv) : null });
+      ptsP.push({ i, v: pv, color: cp, op: on ? 1 : 0.35, bold: on, fill: on, label: on ? fmt(pv) : null });
+    }
+    for (let m = S.sMin; m <= S.sMax; m++) {
+      const yv = S.Y(m);
+      ptsY.push({ i: m, v: yv, color: cy, op: m < n ? 0.9 : m === n ? 1 : 0.15, bold: m === n, fill: m === n, label: m === n ? fmt(yv) : null });
+    }
+    stemPlot($("pX"), ptsX, S.lim.x, { aria: "Input x[i]" });
+    stemPlot($("pG"), ptsG, S.lim.g, { marker: n, aria: "Flipped and shifted impulse response g[n-i]" });
+    stemPlot($("pP"), ptsP, S.lim.p, { aria: "Products x[i] g[n-i]" });
+    stemPlot($("pY"), ptsY, S.lim.y, { aria: "Output y[n]" });
+
+    // formula
+    const nn = n < 0 ? "−" + -n : String(n);
+    const idx = [...overlap].sort((a, b) => a - b);
+    const yv = S.Y(n);
+    let f;
+    if (!idx.length) {
+      f = `y[${nn}] = 0`;
+    } else {
+      const sym = idx.map((i) => `<span style="color:${cx}">x[${i}]</span>·<span style="color:${cg}">g[${n - i}]</span>`).join(" + ");
+      const num = idx.map((i) => `${par(S.X(i))}·${par(S.G(n - i))}`).join(" + ");
+      f = `y[${nn}] = ${sym} = ${num} = <b style="color:${cy}">${fmt(yv)}</b>`;
+    }
+    $("formula").innerHTML = `<span class="m">${f}</span>`;
+    const g0 = `g[0] sits at i = ${nn}`;
+    let why;
+    if (!idx.length) why = `${g0}. The flipped impulse response does not overlap any non-zero input sample, so every product is 0.`;
+    else if (idx.length === 1) why = `${g0}. Only i = ${idx[0]} overlaps, so y[${nn}] is a single product.`;
+    else why = `${g0}. The signals overlap at i = ${idx.join(", ")}; in every product the two indices add up to ${nn}.`;
+    if (S.truncated && n === S.sMax) why += " (Beyond n = 9 the shown signals are cut off, so the slider stops here.)";
+    $("why").textContent = why;
+
+    renderTable();
+  }
+
+  function renderTable() {
+    const cols = [];
+    for (let m = S.sMin; m <= S.sMax; m++) cols.push(m);
+    const ks = [];
+    for (let k = S.xs; k <= S.xe; k++) if (Math.abs(S.X(k)) > 1e-12) ks.push(k);
+    const lab = (m) => (m < 0 ? "−" + -m : m);
+    let h = "<thead><tr><th>n</th>" + cols.map((m) => `<th data-n="${m}" class="${m === n ? "cur" : ""}">${lab(m)}</th>`).join("") + "</tr></thead><tbody>";
+    ks.forEach((k) => {
+      const shift = k === 0 ? "g[n]" : k > 0 ? `g[n−${k}]` : `g[n+${-k}]`;
+      h += `<tr><td>${fmt(S.X(k))}·${shift}</td>` + cols.map((m) => {
+        const v = S.X(k) * S.G(m - k);
+        return `<td class="${m === n ? "cur" : ""} ${Math.abs(v) < 1e-12 ? "zero" : ""}">${fmt(v)}</td>`;
+      }).join("") + "</tr>";
+    });
+    h += `<tr class="sum"><td>y[n]</td>` + cols.map((m) => `<td class="${m === n ? "cur" : ""}">${fmt(S.Y(m))}</td>`).join("") + "</tr></tbody>";
+    const t = $("rows"); t.innerHTML = h;
+    t.querySelectorAll("th[data-n]").forEach((th) => th.addEventListener("click", () => { stop(); setN(parseInt(th.dataset.n, 10)); }));
+  }
+
+  // redraw on resize and theme change
+  let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(render, 60); }).observe($("plots"));
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render); } catch (e) {}
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  selectPreset("a4a");
+})();
+</script>
+
+</body>
+</html>
